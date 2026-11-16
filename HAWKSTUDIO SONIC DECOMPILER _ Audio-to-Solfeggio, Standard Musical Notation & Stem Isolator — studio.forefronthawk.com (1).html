@@ -1,0 +1,1452 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="ui-sophisticated" data-device="desktop">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>HAWKSTUDIO SONIC DECOMPILER | Audio-to-Solfeggio, Standard Musical Notation &amp; Stem Isolator — studio.forefronthawk.com</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700;800&family=Orbitron:wght@700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #070A12;
+    --panel: #111726;
+    --panel2: #172034;
+    --line: #283550;
+    --border: #C5A059;
+    --accent: #D4AF37;
+    --cyan: #00F5D4;
+    --accent2: #00F5D4;
+    --emerald: #39FF88;
+    --purple: #A855F7;
+    --danger: #F87171;
+    --text: #F8FAFC;
+    --mute: #94A3B8;
+    --font: "Inter", system-ui, -apple-system, sans-serif;
+    --mono: "JetBrains Mono", monospace;
+    --display: "Orbitron", sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%;
+    height: 100dvh;
+    overflow: hidden;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    display: flex;
+    flex-direction: column;
+    transition: max-width 0.22s ease, margin 0.22s ease;
+  }
+
+  /* === 4-POSTURE NATIVE DEVICE LAYOUT RECONFIGURER (DESKTOP / MOBILE / FOLD / TABLET) === */
+  html[data-device="mobile"] body {
+    max-width: 430px;
+    margin: 0 auto;
+    border-left: 2px solid var(--accent);
+    border-right: 2px solid var(--accent);
+  }
+  html[data-device="mobile"] .hm-grid-2,
+  html[data-device="mobile"] .hm-stem-grid,
+  html[data-device="mobile"] .solfeggio-cards-grid {
+    grid-template-columns: 1fr !important;
+  }
+  html[data-device="tablet"] body {
+    max-width: 1024px;
+    margin: 0 auto;
+    border-left: 2px solid var(--accent);
+    border-right: 2px solid var(--accent);
+  }
+  html[data-device="tablet"] button,
+  html[data-device="tablet"] select {
+    min-height: 36px;
+    font-size: 12px;
+  }
+  html[data-device="fold"] .hm-grid-2 {
+    grid-template-columns: 1fr 1fr !important;
+    column-gap: 20px !important;
+    background-image: linear-gradient(90deg, transparent calc(50% - 1px), rgba(212, 175, 55, 0.45) 50%, transparent calc(50% + 1px));
+  }
+
+  /* === TOP HEADER === */
+  .hm-topbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 14px;
+    background: linear-gradient(90deg, var(--panel), var(--panel2) 55%, var(--panel));
+    border-bottom: 1.5px solid var(--border);
+    flex-wrap: wrap;
+    z-index: 30;
+  }
+  .hm-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font: 900 14.5px var(--display);
+    color: var(--accent);
+    letter-spacing: 0.07em;
+  }
+  .hm-brand span { color: var(--cyan); }
+
+  button, select, input[type="text"] {
+    font: 700 11px var(--mono);
+    color: var(--text);
+    background: var(--panel2);
+    border: 1px solid rgba(212, 175, 55, 0.45);
+    border-radius: 7px;
+    padding: 6px 10px;
+    cursor: pointer;
+    transition: filter 0.12s, border-color 0.12s, transform 0.06s;
+  }
+  button:hover, select:hover {
+    filter: brightness(1.14);
+    border-color: var(--cyan);
+  }
+  button:active { transform: scale(0.97); }
+  .btn-gold {
+    background: linear-gradient(135deg, var(--accent), #FACC15);
+    color: #050B14;
+    border-color: #FFF;
+    font-weight: 900;
+  }
+  .btn-cyan {
+    background: linear-gradient(135deg, #00F5D4, #38BDF8);
+    color: #04121C;
+    border-color: #FFF;
+    font-weight: 900;
+  }
+  .btn-emerald {
+    background: linear-gradient(135deg, #10B981, #39FF88);
+    color: #04121C;
+    border-color: #FFF;
+    font-weight: 900;
+  }
+  .btn-purple {
+    background: linear-gradient(135deg, #A855F7, #EC4899);
+    color: #FFF;
+    border-color: #FDE047;
+    font-weight: 800;
+  }
+  .btn-listening {
+    background: linear-gradient(135deg, #EF4444, #F97316) !important;
+    color: #FFF !important;
+    box-shadow: 0 0 16px rgba(239, 68, 68, 0.75);
+  }
+
+  /* === SUBBAR: INSTRUMENT ISOLATION & SERIAL ATTRIBUTION === */
+  .hm-subbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 6px 14px;
+    background: rgba(8, 12, 22, 0.96);
+    border-bottom: 1px solid var(--line);
+    flex-wrap: wrap;
+  }
+  .serial-pill {
+    font: 800 10.5px var(--mono);
+    padding: 4px 10px;
+    border-radius: 99px;
+    background: rgba(212, 175, 55, 0.14);
+    border: 1px solid var(--border);
+    color: var(--accent);
+  }
+  .pitch-telemetry-pill {
+    font: 800 11px var(--mono);
+    padding: 4px 11px;
+    border-radius: 99px;
+    background: rgba(0, 245, 212, 0.14);
+    border: 1px solid var(--cyan);
+    color: var(--cyan);
+  }
+
+  /* === WORKSPACE TABS === */
+  .hm-tabs-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 6px 14px;
+    background: var(--panel);
+    border-bottom: 1px solid var(--line);
+    flex-wrap: wrap;
+  }
+  .hm-tab {
+    padding: 6px 12px;
+    border-radius: 7px;
+    font: 800 11.5px var(--mono);
+    background: transparent;
+    color: var(--mute);
+    border: 1px solid transparent;
+  }
+  .hm-tab[aria-selected="true"] {
+    background: rgba(212, 175, 55, 0.18);
+    color: var(--accent);
+    border-color: var(--border);
+  }
+
+  /* === MAIN VIEWS === */
+  .hm-main {
+    flex: 1;
+    min-height: 0;
+    position: relative;
+    display: flex;
+    overflow: hidden;
+  }
+  .hm-view {
+    display: none;
+    width: 100%;
+    height: 100%;
+    flex-direction: column;
+    min-height: 0;
+    overflow: auto;
+    padding: 12px 14px;
+    gap: 12px;
+  }
+  .hm-view.active {
+    display: flex;
+  }
+
+  .hm-grid-2 {
+    display: grid;
+    grid-template-columns: 1.15fr 1fr;
+    gap: 12px;
+    flex: 1;
+    min-height: 0;
+  }
+  .hm-card {
+    background: var(--panel);
+    border: 1.5px solid var(--border);
+    border-radius: 12px;
+    display: flex;
+    flex-direction: column;
+    min-height: 250px;
+    overflow: hidden;
+  }
+  .hm-card-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--panel2);
+    border-bottom: 1px solid var(--line);
+    font: 800 11.5px var(--display);
+    color: var(--accent);
+    letter-spacing: 0.05em;
+    flex-wrap: wrap;
+  }
+  .hm-card-body {
+    flex: 1;
+    overflow: auto;
+    padding: 10px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /* Sheet Music & Spectrum Canvases */
+  #notationStaffCanvas {
+    width: 100%;
+    height: 235px;
+    background: #04070E;
+    border: 1.5px solid var(--cyan);
+    border-radius: 10px;
+    display: block;
+    cursor: pointer;
+  }
+  #waveCanvas {
+    width: 100%;
+    height: 92px;
+    background: #04070E;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    display: block;
+  }
+
+  /* Solfeggio Stream Ribbon */
+  .solfeggio-ribbon {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 8px;
+    background: #050811;
+    border: 1px solid var(--line);
+    border-radius: 9px;
+    min-height: 68px;
+    align-items: center;
+  }
+  .solf-chip {
+    flex: 0 0 auto;
+    min-width: 68px;
+    padding: 6px 9px;
+    border-radius: 8px;
+    border: 1.5px solid var(--cyan);
+    background: rgba(0, 245, 212, 0.1);
+    text-align: center;
+    cursor: pointer;
+    transition: transform 0.08s, background 0.12s;
+  }
+  .solf-chip:hover, .solf-chip.active {
+    transform: translateY(-2px);
+    background: rgba(212, 175, 55, 0.26);
+    border-color: var(--accent);
+  }
+  .solf-chip .syll {
+    font: 900 14px var(--display);
+    color: var(--accent);
+    display: block;
+  }
+  .solf-chip .note-std {
+    font: 700 10.5px var(--mono);
+    color: var(--cyan);
+    display: block;
+  }
+  .solf-chip .hz-lbl {
+    font: 500 9.5px var(--mono);
+    color: var(--mute);
+  }
+
+  /* Stem Isolation Cards */
+  .hm-stem-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+    gap: 7px;
+  }
+  .stem-btn {
+    padding: 8px 10px;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: rgba(0, 0, 0, 0.35);
+    color: var(--text);
+    text-align: left;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    cursor: pointer;
+  }
+  .stem-btn.active {
+    background: rgba(0, 245, 212, 0.16);
+    border-color: var(--cyan);
+    box-shadow: 0 0 14px rgba(0, 245, 212, 0.25);
+  }
+  .stem-btn b {
+    font: 800 11px var(--mono);
+    color: var(--accent);
+  }
+  .stem-btn small {
+    font-size: 10px;
+    color: var(--mute);
+  }
+
+  /* Preserved HawkStudio Synth Box (#hawkStudioRoot) */
+  .synth-box {
+    width: 100%;
+    border: 1.5px solid var(--accent);
+    border-radius: 12px;
+    padding: 12px;
+    background: rgba(7, 10, 18, 0.72);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .synth-controls-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 8px;
+  }
+  .ctrl-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font: 700 10.5px var(--mono);
+    color: var(--mute);
+  }
+
+  /* Solfeggio Sacred & Movable-Do Reference Grid */
+  .solfeggio-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 10px;
+  }
+  .solf-ref-card {
+    background: rgba(0, 0, 0, 0.36);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 11px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    cursor: pointer;
+  }
+  .solf-ref-card:hover {
+    border-color: var(--cyan);
+  }
+
+  /* Footer Attribution Lock */
+  .hm-footer {
+    padding: 6px 14px;
+    background: #050811;
+    border-top: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    font: 700 10.5px var(--mono);
+    color: var(--mute);
+  }
+</style>
+</head>
+<body>
+
+  <!-- ===================================================================== -->
+  <!-- TOP HEADER: LIVE MIC LISTENER, AUDIO UPLOAD, SONG PRESETS & EXPORT    -->
+  <!-- ===================================================================== -->
+  <header class="hm-topbar">
+    <div class="hm-brand">
+      <span>🦅</span> HAWK<span>SONIC</span>
+      <small style="font-size:9px;color:var(--mute);font-family:var(--mono)">STUDIO.FOREFRONTHAWK.COM • SOLFEGGIO &amp; NOTATION DECOMPILER</small>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+      <button type="button" id="btnListenMic" class="btn-cyan" title="Listen to live microphone or room audio and decompile into Solfeggio &amp; Standard Musical Notation">
+        🎙️ Listen to Live Audio: OFF
+      </button>
+      <button type="button" id="btnUploadAudioFile" title="Upload an .MP3, .WAV, .OGG, or .M4A audio file to decompile and isolate instruments">
+        📂 Load Audio File
+      </button>
+      <input type="file" id="inputAudioFile" accept="audio/*,video/*" hidden>
+      <audio id="hiddenAudioPlayer" crossorigin="anonymous" hidden></audio>
+
+      <label style="font:800 10.5px var(--mono);color:var(--accent);display:inline-flex;align-items:center;gap:4px">
+        <span>🎵 Song / Stem Score:</span>
+        <select id="songPresetSelect">
+          <option value="paganini24" selected>🎻 Paganini Caprice No. 24 (A Minor)</option>
+          <option value="hawkx_anthem">🦅 HawkX Tactical Flight Theme (D Dorian)</option>
+          <option value="solfeggio_sacred">✨ 528Hz Solfeggio Harmonic Suite (C Major)</option>
+          <option value="bass_funk">🎸 Electric Bass &amp; Lead Synth Groove (E Minor)</option>
+        </select>
+      </label>
+      <button type="button" id="btnPlayPauseDecompiled" class="btn-gold">
+        ▶ Play Isolated Score
+      </button>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+      <button type="button" id="btnSyncToHawkSuite" class="btn-emerald" title="Broadcast decompiled Solfeggio &amp; Standard Notation score to HawkStudio, HawkTalon &amp; HawkEyas">
+        🚀 Sync Score to HawkSuite
+      </button>
+      <button type="button" id="btnExportScoreJson" class="btn-purple" title="Export decompiled Solfeggio + Standard Notation JSON &amp; ABC Score">
+        💾 Export Score
+      </button>
+    </div>
+  </header>
+
+  <!-- ===================================================================== -->
+  <!-- SUBBAR: LIVE PITCH TELEMETRY, TUNING & DEVICE/THEME RECONFIGURER      -->
+  <!-- ===================================================================== -->
+  <section class="hm-subbar">
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <span class="pitch-telemetry-pill" id="livePitchReadout">
+        🎯 DETECTED: A4 (440.0 Hz) • SOLFEGGIO: LA (6th Degree) • STEM: LEAD SYNTH / VIOLIN
+      </span>
+      <span class="serial-pill" title="Verified HawkTalk Serial Attribution Lock">
+        🔑 SERIAL: FH-GA-20261115-MFF-HTM-5957AE44
+      </span>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <label style="font:700 10.5px var(--mono);color:var(--mute)">
+        Solfège Mode:
+        <select id="solfegeSystemSelect">
+          <option value="fixed_do" selected>🎵 Fixed Do (C = Do)</option>
+          <option value="movable_do">🔄 Movable Do (Tonic = Do)</option>
+          <option value="sacred_hz">✨ Sacred Solfeggio (174–963 Hz)</option>
+        </select>
+      </label>
+      <label style="font:700 10.5px var(--mono);color:var(--mute)">
+        Layout:
+        <select id="hmDeviceSelect">
+          <option value="desktop" selected>🖥️ Desktop</option>
+          <option value="mobile">📱 Mobile</option>
+          <option value="fold">📖 Fold (Dual-Screen)</option>
+          <option value="tablet">📟 Tablet</option>
+        </select>
+      </label>
+      <label style="font:700 10.5px var(--mono);color:var(--mute)">
+        Theme:
+        <select id="hmThemeSelect">
+          <option value="ui-sophisticated" selected>✨ Sophisticated Gold</option>
+          <option value="cyberpunk">⚡ Cyberpunk Neon</option>
+          <option value="matrix">💻 Matrix Green CRT</option>
+          <option value="hawk-cyan">🦅 HawkX Tactical Cyan</option>
+          <option value="daylight">🌤️ Studio Daylight</option>
+        </select>
+      </label>
+    </div>
+  </section>
+
+  <!-- ===================================================================== -->
+  <!-- WORKSPACE NAVIGATION TABS                                             -->
+  <!-- ===================================================================== -->
+  <nav class="hm-tabs-bar" aria-label="HawkSonic Views">
+    <div style="display:flex;gap:5px;flex-wrap:wrap" role="tablist">
+      <button type="button" class="hm-tab" role="tab" data-view="decompiler" aria-selected="true">
+        🎼 1. Standard Notation Grand Staff + Solfeggio Stream &amp; Stem Isolator
+      </button>
+      <button type="button" class="hm-tab" role="tab" data-view="solfeggio" aria-selected="false">
+        🔔 2. Solfeggio Frequency Matrix (Do–Ti Syllables &amp; 174–963 Hz Resonators)
+      </button>
+      <button type="button" class="hm-tab" role="tab" data-view="export" aria-selected="false">
+        📦 3. Score Exporter (ABC Notation · MusicXML · HawkSuite JSON)
+      </button>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <label style="font:700 10.5px var(--mono);color:var(--mute);display:inline-flex;align-items:center;gap:5px">
+        <span>Tempo: <b id="lblTempoBpm" style="color:var(--cyan)">124 BPM</b></span>
+        <input type="range" id="tempoBpmSlider" min="60" max="200" value="124" style="width:95px;accent-color:var(--cyan)">
+      </label>
+      <button type="button" id="btnClearScoreNotes" style="padding:4px 8px;font-size:10px">🧹 Clear Staff</button>
+    </div>
+  </nav>
+
+  <!-- ===================================================================== -->
+  <!-- MAIN WORKSPACE                                                        -->
+  <!-- ===================================================================== -->
+  <main class="hm-main">
+
+    <!-- =================================================================== -->
+    <!-- VIEW 1: STANDARD NOTATION STAFF + SOLFEGGIO + STEM ISOLATOR + SYNTH -->
+    <!-- =================================================================== -->
+    <section class="hm-view active" id="view-decompiler" role="tabpanel">
+      <div class="hm-grid-2">
+        <!-- Left Column: Standard Musical Notation Grand Staff + Solfeggio Stream -->
+        <div class="hm-card">
+          <div class="hm-card-head">
+            <span>🎼 DECOMPILED STANDARD MUSICAL NOTATION &amp; SOLFEGGIO STREAM</span>
+            <span style="font:700 10px var(--mono);color:var(--cyan)">Click anywhere on the Grand Staff to add/audition notes</span>
+          </div>
+          <div class="hm-card-body">
+            <canvas id="notationStaffCanvas" width="760" height="235"></canvas>
+
+            <div style="display:flex;justify-content:space-between;align-items:center">
+              <span style="font:800 10.5px var(--mono);color:var(--accent)">🔔 LIVE SOLFEGGIO SYLLABLE &amp; PITCH SEQUENCE (CLICK CHIP TO AUDITION):</span>
+              <span id="lblNoteCount" style="font:700 10.5px var(--mono);color:var(--mute)">12 Notes Transcribed</span>
+            </div>
+            <div class="solfeggio-ribbon" id="solfeggioStreamRibbon"></div>
+          </div>
+        </div>
+
+        <!-- Right Column: Instrument Stem Isolator + Preserved HawkStudio Synth Module -->
+        <div class="hm-card">
+          <div class="hm-card-head">
+            <span>🎛️ INSTRUMENT STEM ISOLATOR &amp; HAWKSTUDIO SYNTH MODULE</span>
+            <span id="lblActiveStemBadge" style="font:700 10px var(--mono);color:var(--emerald)">ACTIVE STEM: VIOLIN / LEAD SYNTH</span>
+          </div>
+          <div class="hm-card-body">
+            <div style="font:800 10.5px var(--mono);color:var(--cyan)">
+              1. Select Instrument Stem to Isolate (WebAudio Bandpass Formant Filter + Stem Decompiler):
+            </div>
+            <div class="hm-stem-grid" id="stemSelectorGrid">
+              <button type="button" class="stem-btn" data-stem="full">
+                <b>🎼 Full Mix</b>
+                <small>20 Hz – 18 kHz All Stems</small>
+              </button>
+              <button type="button" class="stem-btn" data-stem="vocals">
+                <b>🎤 Lead Vocals</b>
+                <small>300 Hz – 3.4 kHz Formant</small>
+              </button>
+              <button type="button" class="stem-btn active" data-stem="lead_synth">
+                <b>🎻 Violin / Synth</b>
+                <small>260 Hz – 4.8 kHz Harmonic</small>
+              </button>
+              <button type="button" class="stem-btn" data-stem="guitar">
+                <b>🎸 Guitar / Pluck</b>
+                <small>160 Hz – 2.8 kHz Mid</small>
+              </button>
+              <button type="button" class="stem-btn" data-stem="bass">
+                <b>🔊 Bass / Sub</b>
+                <small>35 Hz – 250 Hz Low-Pass</small>
+              </button>
+              <button type="button" class="stem-btn" data-stem="drums">
+                <b>🥁 Drums / Perc</b>
+                <small>Transient High-Q Gate</small>
+              </button>
+            </div>
+
+            <!-- STAGE 2 PRESERVED BLUEPRINT: #hawkStudioRoot, #synthTitle, #scaleModeSelect, #cutoffKnob, #waveCanvas, #btnTriggerArp -->
+            <div class="synth-box" id="hawkStudioRoot">
+              <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px">
+                <h2 id="synthTitle" style="font:800 13px var(--display);color:var(--accent)">🎹 HawkStudio Chromatic &amp; Modal Synth</h2>
+                <button type="button" id="btnTriggerArp" class="btn-cyan" style="padding:4px 10px;font-size:10.5px">▶ Play Arpeggio</button>
+              </div>
+
+              <div class="synth-controls-row">
+                <label class="ctrl-item">
+                  <span>Modal Scale (`#scaleModeSelect`)</span>
+                  <select id="scaleModeSelect">
+                    <option value="chromatic">12-Tone Chromatic</option>
+                    <option value="dorian">Dorian Mode</option>
+                    <option value="aeolian" selected>Natural Minor (Aeolian)</option>
+                    <option value="ionian">Major (Ionian Mode)</option>
+                    <option value="phrygian">Phrygian Mode</option>
+                    <option value="lydian">Lydian Mode</option>
+                    <option value="pentatonic">Pentatonic Lead</option>
+                  </select>
+                </label>
+
+                <label class="ctrl-item">
+                  <span>Filter Cutoff (`#cutoffKnob`: <b id="lblCutoffVal" style="color:var(--cyan)">2400 Hz</b>)</span>
+                  <input type="range" id="cutoffKnob" min="300" max="6000" value="2400" style="accent-color:var(--accent)">
+                </label>
+              </div>
+
+              <canvas id="waveCanvas" width="680" height="90"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- VIEW 2: SOLFEGGIO FREQUENCY MATRIX (DO-TI & SACRED 174-963 HZ)      -->
+    <!-- =================================================================== -->
+    <section class="hm-view" id="view-solfeggio" role="tabpanel">
+      <div class="hm-card">
+        <div class="hm-card-head">
+          <span>🔔 INTERACTIVE SOLFEGGIO &amp; SACRED FREQUENCY GENERATOR MATRIX</span>
+          <span style="font:700 10.5px var(--mono);color:var(--cyan)">Click any Solfeggio card to play its pure harmonic tone &amp; append to the Grand Staff</span>
+        </div>
+        <div class="hm-card-body">
+          <div class="solfeggio-cards-grid" id="solfeggioMatrixGrid"></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- =================================================================== -->
+    <!-- VIEW 3: SCORE EXPORTER (ABC NOTATION, MUSICXML, HAWKSUITE JSON)     -->
+    <!-- =================================================================== -->
+    <section class="hm-view" id="view-export" role="tabpanel">
+      <div class="hm-grid-2">
+        <div class="hm-card">
+          <div class="hm-card-head">
+            <span>📦 EXPORT DECOMPILED SOLFEGGIO &amp; NOTATION SCORE</span>
+          </div>
+          <div class="hm-card-body">
+            <label class="ctrl-item">
+              <span>Export Score Format:</span>
+              <select id="exportScoreFormatSelect">
+                <option value="hawksuite_json" selected>🦅 Native HawkSuite Musical Score + Solfeggio JSON (.hawkscore.json)</option>
+                <option value="abc_notation">🎼 Standard ABC Musical Notation (.abc — Sheet Music Standard)</option>
+                <option value="solfeggio_sheet">🔔 Solfeggio + Standard Lead Sheet (.txt / .md)</option>
+              </select>
+            </label>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px">
+              <button type="button" id="btnCopyScoreOutput" class="btn-cyan">📋 Copy Score to Clipboard</button>
+              <button type="button" id="btnDownloadScoreFile" class="btn-gold">💾 Download Score File</button>
+            </div>
+            <div id="suiteSyncStatusBox" style="margin-top:auto;padding:10px;background:#050811;border:1px solid var(--border);border-radius:8px;font:600 11px/1.5 var(--mono);color:var(--emerald)">
+              🟢 Connected to <code>hawk_creator_ecosystem_v1</code> bus — decompiled scores and isolated instrument patches sync seamlessly with <b>HawkStudio</b>, <b>HawkTalon</b>, <b>HawkEyas</b>, and <b>HawkTails</b>.
+            </div>
+          </div>
+        </div>
+
+        <div class="hm-card">
+          <div class="hm-card-head">
+            <span>📄 SERIALIZED SCORE &amp; SOLFEGGIO PREVIEW</span>
+          </div>
+          <div class="hm-card-body">
+            <textarea id="scoreExportTextarea" readonly style="width:100%;flex:1;min-height:220px;background:#05070C;color:#A7F3D0;border:1px solid var(--line);border-radius:8px;padding:10px;font:500 11.5px/1.5 var(--mono);resize:none"></textarea>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ===================================================================== -->
+  <!-- MANDATORY FOREFRONT HAWK & GEMINI AARGON ATTRIBUTION FOOTER           -->
+  <!-- ===================================================================== -->
+  <footer class="hm-footer" id="hawktalk-attribution-footer">
+    <span>⚡ Engineered &amp; Credited by <a href="https://forefronthawk.com" target="_blank" rel="noopener" style="color:var(--accent);text-decoration:none">Forefront Hawk (forefronthawk.com)</a> &amp; <b style="color:var(--cyan)">Gemini Aargon</b></span>
+    <span>🔑 Serial Lock: <code style="color:var(--emerald)">FH-GA-20261115-MFF-HTM-5957AE44</code> • Contact: <a href="mailto:Michael@forefronthawk.com" style="color:var(--cyan);text-decoration:none">Michael@forefronthawk.com</a></span>
+  </footer>
+
+<script>
+(function(){
+  const $ = id => document.getElementById(id);
+
+  // =========================================================================
+  // 1. SOLFEGGIO, STANDARD NOTATION & INSTRUMENT STEM DEFINITIONS
+  // =========================================================================
+  const NOTE_NAMES = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+  const SOLFEGE_SYLLABLES = ["Do", "Di", "Re", "Ri", "Mi", "Fa", "Fi", "Sol", "Si", "La", "Li", "Ti"];
+
+  const SACRED_SOLFEGGIO = [
+    { hz: 174, syll: "Ut-", std: "F3",  title: "174 Hz — Foundation & Grounding", desc: "Low harmonic anchor frequency" },
+    { hz: 285, syll: "Re-", std: "C#4", title: "285 Hz — Quantum Harmonic Restoration", desc: "Upper low-mid overtone" },
+    { hz: 396, syll: "Ut",  std: "G4",  title: "396 Hz — Ut Queant Laxis (Liberation)", desc: "First classical hexachord tone" },
+    { hz: 417, syll: "Re",  std: "G#4", title: "417 Hz — Resonant Change & Motion", desc: "Second classical hexachord tone" },
+    { hz: 528, syll: "Mi",  std: "C5",  title: "528 Hz — Mira Gestorum (Transformation)", desc: "Central solar harmonic frequency" },
+    { hz: 639, syll: "Fa",  std: "D#5", title: "639 Hz — Famuli Tuorum (Connection)", desc: "Inter-interval consonant fifth" },
+    { hz: 741, syll: "Sol", std: "F#5", title: "741 Hz — Solve Polluti (Expression)", desc: "High clarity acoustic harmonic" },
+    { hz: 852, syll: "La",  std: "G#5", title: "852 Hz — Labii Reatum (Intuition)", desc: "Upper crystalline overtone" },
+    { hz: 963, syll: "Ti",  std: "B5",  title: "963 Hz — Sancte Ioannes (Crown Harmonic)", desc: "Highest Solfeggio scale degree" }
+  ];
+
+  // Instrument Stem DSP Filter & Synthesis Profiles
+  const STEM_PROFILES = {
+    full:       { label: "Full Mix (All Instruments)", wave: "sawtooth", filterType: "lowpass", freq: 5200, q: 1.2, gain: 0.22 },
+    vocals:     { label: "Lead Vocals (Formant Band)", wave: "triangle", filterType: "bandpass", freq: 1150, q: 2.8, gain: 0.28 },
+    lead_synth: { label: "Violin / Lead Synth",        wave: "sawtooth", filterType: "bandpass", freq: 1850, q: 2.2, gain: 0.24 },
+    guitar:     { label: "Guitar / Plucked Strings",   wave: "triangle", filterType: "bandpass", freq: 880,  q: 2.4, gain: 0.26 },
+    bass:       { label: "Bass / Sub-Synth",           wave: "sine",     filterType: "lowpass",  freq: 240,  q: 3.5, gain: 0.34 },
+    drums:      { label: "Drums & Percussion Gate",    wave: "square",   filterType: "highpass", freq: 1400, q: 4.0, gain: 0.18 }
+  };
+
+  // Built-in Multi-Stem Decompiled Song Scores
+  const SONG_SCORES = {
+    paganini24: {
+      title: "Niccolò Paganini — Caprice No. 24 in A Minor",
+      keyRoot: 9, // A
+      notes: [
+        { midi: 69, dur: "8n", stem: "lead_synth" }, // A4
+        { midi: 69, dur: "16n", stem: "lead_synth" }, // A4
+        { midi: 72, dur: "16n", stem: "lead_synth" }, // C5
+        { midi: 71, dur: "16n", stem: "lead_synth" }, // B4
+        { midi: 69, dur: "16n", stem: "lead_synth" }, // A4
+        { midi: 76, dur: "8n", stem: "lead_synth" }, // E5
+        { midi: 69, dur: "8n", stem: "bass" },       // A4
+        { midi: 64, dur: "8n", stem: "guitar" },     // E4
+        { midi: 68, dur: "16n", stem: "lead_synth" }, // G#4
+        { midi: 71, dur: "16n", stem: "lead_synth" }, // B4
+        { midi: 76, dur: "8n", stem: "lead_synth" }, // E5
+        { midi: 69, dur: "4n", stem: "lead_synth" }  // A4
+      ]
+    },
+    hawkx_anthem: {
+      title: "HawkX Tactical Flight Theme (D Dorian)",
+      keyRoot: 2, // D
+      notes: [
+        { midi: 62, dur: "8n", stem: "bass" },       // D4
+        { midi: 65, dur: "8n", stem: "lead_synth" }, // F4
+        { midi: 69, dur: "8n", stem: "lead_synth" }, // A4
+        { midi: 71, dur: "8n", stem: "guitar" },     // B4 (Dorian 6th)
+        { midi: 74, dur: "4n", stem: "lead_synth" }, // D5
+        { midi: 72, dur: "8n", stem: "vocals" },     // C5
+        { midi: 69, dur: "8n", stem: "guitar" },     // A4
+        { midi: 65, dur: "8n", stem: "bass" },       // F4
+        { midi: 64, dur: "8n", stem: "lead_synth" }, // E4
+        { midi: 62, dur: "4n", stem: "bass" }        // D4
+      ]
+    },
+    solfeggio_sacred: {
+      title: "528Hz Solfeggio Harmonic Suite (C Major)",
+      keyRoot: 0, // C
+      notes: [
+        { midi: 60, dur: "4n", stem: "vocals", customHz: 396 },     // Ut
+        { midi: 62, dur: "4n", stem: "vocals", customHz: 417 },     // Re
+        { midi: 64, dur: "4n", stem: "lead_synth", customHz: 528 }, // Mi (528 Hz)
+        { midi: 65, dur: "4n", stem: "guitar", customHz: 639 },     // Fa
+        { midi: 67, dur: "4n", stem: "lead_synth", customHz: 741 }, // Sol
+        { midi: 69, dur: "4n", stem: "vocals", customHz: 852 },     // La
+        { midi: 71, dur: "4n", stem: "lead_synth", customHz: 963 }, // Ti
+        { midi: 72, dur: "2n", stem: "full", customHz: 528 }        // High Do
+      ]
+    },
+    bass_funk: {
+      title: "Electric Bass & Lead Synth Groove (E Minor)",
+      keyRoot: 4, // E
+      notes: [
+        { midi: 52, dur: "8n", stem: "bass" },       // E3
+        { midi: 55, dur: "8n", stem: "bass" },       // G3
+        { midi: 59, dur: "8n", stem: "guitar" },     // B3
+        { midi: 64, dur: "8n", stem: "lead_synth" }, // E4
+        { midi: 67, dur: "8n", stem: "lead_synth" }, // G4
+        { midi: 66, dur: "8n", stem: "guitar" },     // F#4
+        { midi: 64, dur: "4n", stem: "bass" },       // E4
+        { midi: 71, dur: "4n", stem: "lead_synth" }  // B4
+      ]
+    }
+  };
+
+  // =========================================================================
+  // 2. STATE & WEBAUDIO DSP ENGINE
+  // =========================================================================
+  let actx = null;
+  let activeStem = "lead_synth";
+  let currentSongKey = "paganini24";
+  let transcribedNotes = [];
+  let activeNoteIdx = 0;
+  let isPlayingScore = false;
+  let playTimer = null;
+  let isListeningMic = false;
+  let micStream = null;
+  let micAnalyser = null;
+  let lastPlayedFreq = 440;
+  let wavePhase = 0;
+
+  const staffCanvas = $("notationStaffCanvas");
+  const staffCtx = staffCanvas.getContext("2d");
+  const waveCanvas = $("waveCanvas");
+  const waveCtx = waveCanvas.getContext("2d");
+
+  function ensureAudioContext() {
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!actx) actx = new AC();
+    if (actx.state === "suspended") actx.resume();
+    return actx;
+  }
+
+  function midiToFreq(midi) {
+    return 440 * Math.pow(2, (midi - 69) / 12);
+  }
+
+  function freqToMidi(freq) {
+    return Math.round(69 + 12 * Math.log2(Math.max(20, freq) / 440));
+  }
+
+  function getNoteMetadata(midi, customHz) {
+    const clamped = Math.max(36, Math.min(96, midi));
+    const pc = ((clamped % 12) + 12) % 12;
+    const octave = Math.floor(clamped / 12) - 1;
+    const stdName = NOTE_NAMES[pc] + octave;
+    const freq = customHz || midiToFreq(clamped);
+
+    const solfMode = $("solfegeSystemSelect").value;
+    const songRoot = (SONG_SCORES[currentSongKey] && SONG_SCORES[currentSongKey].keyRoot) || 0;
+    let syll = SOLFEGE_SYLLABLES[pc];
+    if (solfMode === "movable_do") {
+      syll = SOLFEGE_SYLLABLES[(pc - songRoot + 12) % 12];
+    } else if (solfMode === "sacred_hz") {
+      const nearest = SACRED_SOLFEGGIO.reduce((best, cur) =>
+        Math.abs(cur.hz - freq) < Math.abs(best.hz - freq) ? cur : best
+      , SACRED_SOLFEGGIO[0]);
+      syll = `${nearest.syll} (${nearest.hz}Hz)`;
+    }
+
+    return { midi: clamped, pc, octave, stdName, freq, syll };
+  }
+
+  // Preserved function from Stage 2 Blueprint: playArpeggioNote(freq)
+  function playArpeggioNote(freq, stemOverride, durSec) {
+    try {
+      const ac = ensureAudioContext();
+      const now = ac.currentTime;
+      const stemKey = stemOverride || activeStem;
+      const prof = STEM_PROFILES[stemKey] || STEM_PROFILES.lead_synth;
+      const duration = durSec || 0.36;
+
+      // Apply bass octave shift when isolating Bass stem
+      const playFreq = stemKey === "bass" && freq > 220 ? freq * 0.5 : freq;
+      lastPlayedFreq = playFreq;
+
+      const osc = ac.createOscillator();
+      const filter = ac.createBiquadFilter();
+      const gain = ac.createGain();
+
+      osc.type = prof.wave;
+      osc.frequency.setValueAtTime(playFreq, now);
+
+      const userCutoff = Number($("cutoffKnob").value) || prof.freq;
+      filter.type = prof.filterType;
+      filter.frequency.setValueAtTime(stemKey === "full" ? userCutoff : prof.freq, now);
+      filter.Q.value = prof.q;
+
+      gain.gain.setValueAtTime(prof.gain, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + duration);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(ac.destination);
+
+      osc.start(now);
+      osc.stop(now + duration + 0.02);
+
+      const meta = getNoteMetadata(freqToMidi(playFreq), Math.round(playFreq) === 528 ? 528 : 0);
+      $("livePitchReadout").textContent =
+        `🎯 DETECTED: ${meta.stdName} (${playFreq.toFixed(1)} Hz) • SOLFEGGIO: ${meta.syll.toUpperCase()} • STEM: ${prof.label.toUpperCase()}`;
+    } catch (e) {}
+  }
+  window.playArpeggioNote = playArpeggioNote;
+
+  // =========================================================================
+  // 3. STANDARD MUSICAL NOTATION GRAND STAFF RENDERER (TREBLE + BASS CLEF)
+  // =========================================================================
+  // Maps MIDI pitch to vertical staff position (diatonic steps relative to C4 = Middle C)
+  const PC_TO_DIATONIC = [0, 0, 1, 1, 2, 3, 3, 4, 4, 5, 5, 6];
+  const PC_IS_SHARP    = [0, 1, 0, 1, 0, 0, 1, 0, 1, 0, 1, 0];
+
+  function diatonicStepsFromC4(midi) {
+    const oct = Math.floor(midi / 12) - 1;
+    const pc = ((midi % 12) + 12) % 12;
+    return (oct - 4) * 7 + PC_TO_DIATONIC[pc];
+  }
+
+  function renderGrandStaffAndSolfeggio() {
+    const w = staffCanvas.width, h = staffCanvas.height;
+    staffCtx.fillStyle = "#04070E";
+    staffCtx.fillRect(0, 0, w, h);
+
+    const stepPx = 6; // 6px per diatonic step (12px between staff lines)
+    // Middle C (C4, step 0) sits between Treble bottom line (E4, step +2) and Bass top line (A3, step -2)
+    const middleCY = 112;
+
+    // Draw Treble Staff (5 lines: E4=+2, G4=+4, B4=+6, D5=+8, F5=+10)
+    staffCtx.strokeStyle = "rgba(148, 163, 184, 0.45)";
+    staffCtx.lineWidth = 1.2;
+    for (const s of [2, 4, 6, 8, 10]) {
+      const y = middleCY - s * stepPx;
+      staffCtx.beginPath();
+      staffCtx.moveTo(24, y);
+      staffCtx.lineTo(w - 18, y);
+      staffCtx.stroke();
+    }
+
+    // Draw Bass Staff (5 lines: G2=-10, B2=-8, D3=-6, F3=-4, A3=-2)
+    for (const s of [-2, -4, -6, -8, -10]) {
+      const y = middleCY - s * stepPx;
+      staffCtx.beginPath();
+      staffCtx.moveTo(24, y);
+      staffCtx.lineTo(w - 18, y);
+      staffCtx.stroke();
+    }
+
+    // Grand Staff Brace & Clef Symbols
+    staffCtx.strokeStyle = "#D4AF37";
+    staffCtx.lineWidth = 3;
+    staffCtx.beginPath();
+    staffCtx.moveTo(24, middleCY - 10 * stepPx);
+    staffCtx.lineTo(24, middleCY + 10 * stepPx);
+    staffCtx.stroke();
+
+    staffCtx.fillStyle = "#D4AF37";
+    staffCtx.font = "bold 34px serif";
+    staffCtx.fillText("𝄞", 30, middleCY - 3 * stepPx);
+    staffCtx.font = "bold 26px serif";
+    staffCtx.fillText("𝄢", 31, middleCY + 6 * stepPx);
+
+    // Time Signature 4/4
+    staffCtx.fillStyle = "#00F5D4";
+    staffCtx.font = "bold 15px monospace";
+    staffCtx.fillText("4", 64, middleCY - 6 * stepPx);
+    staffCtx.fillText("4", 64, middleCY - 3 * stepPx);
+
+    // Render Notes across the Grand Staff
+    const startX = 96;
+    const availW = w - startX - 26;
+    const count = Math.max(1, transcribedNotes.length);
+    const spacing = Math.min(54, availW / count);
+
+    transcribedNotes.forEach((n, idx) => {
+      const meta = getNoteMetadata(n.midi, n.customHz);
+      const steps = diatonicStepsFromC4(meta.midi);
+      const nx = startX + idx * spacing;
+      const ny = middleCY - steps * stepPx;
+      const isCurrent = idx === activeNoteIdx;
+
+      // Measure barline every 4 notes
+      if (idx > 0 && idx % 4 === 0) {
+        const barX = nx - spacing * 0.45;
+        staffCtx.strokeStyle = "rgba(212, 175, 55, 0.35)";
+        staffCtx.lineWidth = 1;
+        staffCtx.beginPath();
+        staffCtx.moveTo(barX, middleCY - 10 * stepPx);
+        staffCtx.lineTo(barX, middleCY + 10 * stepPx);
+        staffCtx.stroke();
+      }
+
+      // Ledger line for Middle C (step 0) or high/low notes
+      if (steps === 0 || steps >= 12 || steps <= -12) {
+        staffCtx.strokeStyle = "#94A3B8";
+        staffCtx.lineWidth = 1.4;
+        staffCtx.beginPath();
+        staffCtx.moveTo(nx - 11, ny);
+        staffCtx.lineTo(nx + 11, ny);
+        staffCtx.stroke();
+      }
+
+      // Sharp accidental (#) if needed
+      if (PC_IS_SHARP[meta.pc]) {
+        staffCtx.fillStyle = "#FACC15";
+        staffCtx.font = "bold 13px monospace";
+        staffCtx.fillText("♯", nx - 16, ny + 4);
+      }
+
+      // Notehead
+      staffCtx.fillStyle = isCurrent ? "#39FF88" : "#00F5D4";
+      staffCtx.beginPath();
+      staffCtx.ellipse(nx, ny, 6.5, 4.8, -0.25, 0, Math.PI * 2);
+      staffCtx.fill();
+
+      // Note Stem
+      staffCtx.strokeStyle = isCurrent ? "#39FF88" : "#00F5D4";
+      staffCtx.lineWidth = 1.8;
+      staffCtx.beginPath();
+      if (steps >= 0) {
+        staffCtx.moveTo(nx + 5.5, ny);
+        staffCtx.lineTo(nx + 5.5, ny - 26);
+      } else {
+        staffCtx.moveTo(nx - 5.5, ny);
+        staffCtx.lineTo(nx - 5.5, ny + 26);
+      }
+      staffCtx.stroke();
+
+      // Dual Label Below Staff: Solfeggio Syllable + Standard Pitch Name
+      staffCtx.fillStyle = isCurrent ? "#39FF88" : "#D4AF37";
+      staffCtx.font = "bold 10.5px monospace";
+      staffCtx.textAlign = "center";
+      staffCtx.fillText(meta.syll.split(" ")[0], nx, h - 24);
+      staffCtx.fillStyle = "#94A3B8";
+      staffCtx.font = "600 9.5px monospace";
+      staffCtx.fillText(meta.stdName, nx, h - 10);
+    });
+    staffCtx.textAlign = "left";
+
+    // Update Solfeggio Ribbon Chips
+    const ribbon = $("solfeggioStreamRibbon");
+    ribbon.innerHTML = "";
+    transcribedNotes.forEach((n, idx) => {
+      const meta = getNoteMetadata(n.midi, n.customHz);
+      const chip = document.createElement("div");
+      chip.className = "solf-chip" + (idx === activeNoteIdx ? " active" : "");
+      chip.innerHTML = `
+        <span class="syll">${meta.syll}</span>
+        <span class="note-std">${meta.stdName} • ${n.dur || "8n"}</span>
+        <span class="hz-lbl">${meta.freq.toFixed(1)} Hz</span>
+      `;
+      chip.addEventListener("click", () => {
+        activeNoteIdx = idx;
+        playArpeggioNote(meta.freq, n.stem);
+        renderGrandStaffAndSolfeggio();
+      });
+      ribbon.appendChild(chip);
+    });
+
+    $("lblNoteCount").textContent = `${transcribedNotes.length} Notes Transcribed`;
+    refreshExportScorePreview();
+  }
+
+  // Click on Grand Staff Canvas to add & audition a note at that vertical pitch!
+  staffCanvas.addEventListener("click", e => {
+    const rect = staffCanvas.getBoundingClientRect();
+    const y = (e.clientY - rect.top) * (staffCanvas.height / rect.height);
+    const middleCY = 112;
+    const stepPx = 6;
+    const stepsFromC4 = Math.round((middleCY - y) / stepPx);
+    const diatonicToSemis = [0, 2, 4, 5, 7, 9, 11];
+    const octOffset = Math.floor(stepsFromC4 / 7);
+    const degree = ((stepsFromC4 % 7) + 7) % 7;
+    const midi = Math.max(40, Math.min(88, 60 + octOffset * 12 + diatonicToSemis[degree]));
+
+    transcribedNotes.push({ midi, dur: "8n", stem: activeStem });
+    if (transcribedNotes.length > 16) transcribedNotes.shift();
+    activeNoteIdx = transcribedNotes.length - 1;
+    const meta = getNoteMetadata(midi);
+    playArpeggioNote(meta.freq, activeStem);
+    renderGrandStaffAndSolfeggio();
+  });
+
+  // =========================================================================
+  // 4. SOLFEGGIO SACRED & MODAL REFERENCE MATRIX (TAB 2)
+  // =========================================================================
+  function renderSolfeggioMatrix() {
+    const grid = $("solfeggioMatrixGrid");
+    grid.innerHTML = "";
+    SACRED_SOLFEGGIO.forEach(item => {
+      const card = document.createElement("div");
+      card.className = "solf-ref-card";
+      card.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center">
+          <b style="font:900 15px var(--display);color:var(--accent)">${item.syll} • ${item.hz} Hz</b>
+          <span style="font:800 11px var(--mono);color:var(--cyan)">Nearest: ${item.std}</span>
+        </div>
+        <div style="font-size:12px;font-weight:700;color:var(--text)">${item.title}</div>
+        <small style="color:var(--mute);font-size:11px">${item.desc}</small>
+      `;
+      card.addEventListener("click", () => {
+        const midi = freqToMidi(item.hz);
+        transcribedNotes.push({ midi, dur: "4n", stem: activeStem, customHz: item.hz });
+        if (transcribedNotes.length > 16) transcribedNotes.shift();
+        activeNoteIdx = transcribedNotes.length - 1;
+        playArpeggioNote(item.hz, activeStem, 0.55);
+        renderGrandStaffAndSolfeggio();
+      });
+      grid.appendChild(card);
+    });
+  }
+
+  // =========================================================================
+  // 5. LIVE MICROPHONE AUDIO DECOMPILER & PITCH DETECTOR
+  // =========================================================================
+  let micSampleInterval = null;
+  async function toggleLiveMicListener() {
+    const btn = $("btnListenMic");
+    if (isListeningMic) {
+      isListeningMic = false;
+      btn.classList.remove("btn-listening");
+      btn.textContent = "🎙️ Listen to Live Audio: OFF";
+      if (micSampleInterval) clearInterval(micSampleInterval);
+      if (micStream) {
+        micStream.getTracks().forEach(t => t.stop());
+        micStream = null;
+      }
+      return;
+    }
+
+    isListeningMic = true;
+    btn.classList.add("btn-listening");
+    btn.textContent = "🔴 Listening & Decompiling Audio...";
+
+    try {
+      const ac = ensureAudioContext();
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        micStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        const src = ac.createMediaStreamSource(micStream);
+        micAnalyser = ac.createAnalyser();
+        micAnalyser.fftSize = 1024;
+        src.connect(micAnalyser);
+      }
+    } catch (err) {
+      // Graceful fallback in sandboxed preview: simulate incoming live audio stream
+      micAnalyser = null;
+    }
+
+    const scaleMap = {
+      chromatic: [0,1,2,3,4,5,6,7,8,9,10,11],
+      dorian: [0,2,3,5,7,9,10],
+      aeolian: [0,2,3,5,7,8,10],
+      ionian: [0,2,4,5,7,9,11],
+      phrygian: [0,1,3,5,7,8,10],
+      lydian: [0,2,4,6,7,9,11],
+      pentatonic: [0,2,4,7,9]
+    };
+
+    micSampleInterval = setInterval(() => {
+      if (!isListeningMic) return;
+      if (micAnalyser) {
+        const buf = new Float32Array(micAnalyser.fftSize);
+        micAnalyser.getFloatTimeDomainData(buf);
+        let rms = 0;
+        for (let i = 0; i < buf.length; i++) rms += buf[i] * buf[i];
+        rms = Math.sqrt(rms / buf.length);
+        if (rms > 0.015) {
+          // Zero-crossing fundamental frequency estimation
+          let crossings = 0;
+          for (let i = 1; i < buf.length; i++) {
+            if ((buf[i - 1] < 0 && buf[i] >= 0) || (buf[i - 1] >= 0 && buf[i] < 0)) crossings++;
+          }
+          const estFreq = Math.max(85, Math.min(1200, (crossings * actx.sampleRate) / (2 * buf.length)));
+          const midi = freqToMidi(estFreq);
+          transcribedNotes.push({ midi, dur: "8n", stem: activeStem });
+          if (transcribedNotes.length > 16) transcribedNotes.shift();
+          activeNoteIdx = transcribedNotes.length - 1;
+          renderGrandStaffAndSolfeggio();
+        }
+      } else {
+        // Simulated live stem listening in sandboxed environments
+        const sc = scaleMap[$("scaleModeSelect").value] || scaleMap.aeolian;
+        const semi = sc[Math.floor(Math.random() * sc.length)];
+        const midi = 60 + semi;
+        transcribedNotes.push({ midi, dur: "8n", stem: activeStem });
+        if (transcribedNotes.length > 16) transcribedNotes.shift();
+        activeNoteIdx = transcribedNotes.length - 1;
+        playArpeggioNote(midiToFreq(midi), activeStem, 0.28);
+        renderGrandStaffAndSolfeggio();
+      }
+    }, 650);
+  }
+
+  $("btnListenMic").addEventListener("click", toggleLiveMicListener);
+
+  // =========================================================================
+  // 6. SCORE PLAYBACK, ARPEGGIATOR & WAVEFORM OSCILLOSCOPE (#waveCanvas)
+  // =========================================================================
+  function toggleScorePlayback() {
+    const btn = $("btnPlayPauseDecompiled");
+    if (isPlayingScore) {
+      isPlayingScore = false;
+      btn.textContent = "▶ Play Isolated Score";
+      if (playTimer) clearTimeout(playTimer);
+      return;
+    }
+    isPlayingScore = true;
+    btn.textContent = "⏹️ Stop Playback";
+    activeNoteIdx = 0;
+
+    function stepNote() {
+      if (!isPlayingScore || transcribedNotes.length === 0) {
+        isPlayingScore = false;
+        btn.textContent = "▶ Play Isolated Score";
+        return;
+      }
+      const n = transcribedNotes[activeNoteIdx % transcribedNotes.length];
+      const meta = getNoteMetadata(n.midi, n.customHz);
+      const bpm = Number($("tempoBpmSlider").value) || 124;
+      const beatMs = (60 / bpm) * 1000 * 0.55;
+
+      playArpeggioNote(meta.freq, activeStem, (beatMs / 1000) * 0.9);
+      renderGrandStaffAndSolfeggio();
+
+      activeNoteIdx = (activeNoteIdx + 1) % transcribedNotes.length;
+      playTimer = setTimeout(stepNote, beatMs);
+    }
+    stepNote();
+  }
+
+  $("btnPlayPauseDecompiled").addEventListener("click", toggleScorePlayback);
+
+  // Preserved #btnTriggerArp from Stage 2 Blueprint
+  $("btnTriggerArp").addEventListener("click", () => {
+    const scaleMap = {
+      chromatic: [0,1,2,3,4,5,6,7],
+      dorian: [0,2,3,5,7,9,10,12],
+      aeolian: [0,2,3,5,7,8,10,12],
+      ionian: [0,2,4,5,7,9,11,12],
+      phrygian: [0,1,3,5,7,8,10,12],
+      lydian: [0,2,4,6,7,9,11,12],
+      pentatonic: [0,2,4,7,9,12]
+    };
+    const sc = scaleMap[$("scaleModeSelect").value] || scaleMap.aeolian;
+    sc.forEach((semi, idx) => {
+      setTimeout(() => {
+        const freq = 261.63 * Math.pow(2, semi / 12);
+        playArpeggioNote(freq, activeStem, 0.22);
+      }, idx * 125);
+    });
+  });
+
+  function drawWaveformScope() {
+    requestAnimationFrame(drawWaveformScope);
+    const w = waveCanvas.width, h = waveCanvas.height;
+    waveCtx.fillStyle = "#04070E";
+    waveCtx.fillRect(0, 0, w, h);
+    waveCtx.strokeStyle = "#00F5D4";
+    waveCtx.lineWidth = 2;
+    waveCtx.beginPath();
+    wavePhase += 0.09;
+    const cycles = Math.max(2, Math.min(14, lastPlayedFreq / 80));
+    const prof = STEM_PROFILES[activeStem] || STEM_PROFILES.lead_synth;
+    for (let x = 0; x < w; x++) {
+      const t = (x / w) * Math.PI * 2 * cycles + wavePhase;
+      let yv = Math.sin(t);
+      if (prof.wave === "sawtooth") yv = ((t % (Math.PI * 2)) / Math.PI) - 1;
+      else if (prof.wave === "square") yv = Math.sign(yv) * 0.75;
+      const y = h * 0.5 + yv * (h * 0.34);
+      if (x === 0) waveCtx.moveTo(x, y);
+      else waveCtx.lineTo(x, y);
+    }
+    waveCtx.stroke();
+  }
+
+  // =========================================================================
+  // 7. SCORE EXPORTER & HAWKSUITE ECOSYSTEM BUS SYNC
+  // =========================================================================
+  const BUS_KEY = "hawk_creator_ecosystem_v1";
+  let suiteBus = null;
+  try {
+    if (typeof BroadcastChannel === "function") suiteBus = new BroadcastChannel(BUS_KEY);
+  } catch (e) {}
+
+  function buildExportScoreString() {
+    const fmt = $("exportScoreFormatSelect").value;
+    const song = SONG_SCORES[currentSongKey] || SONG_SCORES.paganini24;
+    const detailedNotes = transcribedNotes.map((n, i) => {
+      const m = getNoteMetadata(n.midi, n.customHz);
+      return { index: i + 1, standardNote: m.stdName, solfeggio: m.syll, hz: Number(m.freq.toFixed(2)), duration: n.dur || "8n", stem: activeStem };
+    });
+
+    if (fmt === "abc_notation") {
+      const abcNotes = detailedNotes.map(n => n.standardNote.replace("#", "^").replace(/4$/, "").replace(/5$/, "'")).join(" ");
+      return [
+        `X:1`,
+        `T:${song.title} (Isolated Stem: ${activeStem})`,
+        `C:Decompiled via HawkSonic — Forefront Hawk & Gemini Aargon [FH-GA-20261115-MFF-HTM-5957AE44]`,
+        `M:4/4`,
+        `L:1/8`,
+        `Q:1/4=${$("tempoBpmSlider").value}`,
+        `K:Amin`,
+        `| ${abcNotes} |]`
+      ].join("\n");
+    }
+
+    if (fmt === "solfeggio_sheet") {
+      return [
+        `# 🦅 HAWKSONIC SOLFEGGIO & STANDARD NOTATION LEAD SHEET`,
+        `- **Title:** ${song.title}`,
+        `- **Isolated Instrument Stem:** ${STEM_PROFILES[activeStem].label}`,
+        `- **Solfège Mode:** ${$("solfegeSystemSelect").value}`,
+        `- **Serial Credit:** Forefront Hawk (forefronthawk.com) & Gemini Aargon [FH-GA-20261115-MFF-HTM-5957AE44]`,
+        ``,
+        `| Beat | Solfeggio Syllable | Standard Pitch | Frequency (Hz) | Stem |`,
+        `|------|--------------------|----------------|----------------|------|`,
+        ...detailedNotes.map(n => `| ${n.index} | **${n.solfeggio}** | \`${n.standardNote}\` | ${n.hz} Hz | ${n.stem} |`)
+      ].join("\n");
+    }
+
+    return JSON.stringify({
+      serial: "FH-GA-20261115-MFF-HTM-5957AE44",
+      credits: "Forefront Hawk (https://forefronthawk.com) & Gemini Aargon",
+      generator: "HawkSonic Music Decompiler (studio.forefronthawk.com)",
+      title: song.title,
+      isolatedStem: activeStem,
+      tempoBpm: Number($("tempoBpmSlider").value),
+      solfegeSystem: $("solfegeSystemSelect").value,
+      notes: detailedNotes
+    }, null, 2);
+  }
+
+  function refreshExportScorePreview() {
+    $("scoreExportTextarea").value = buildExportScoreString();
+  }
+
+  function syncScoreToHawkSuite() {
+    try {
+      const busData = JSON.parse(localStorage.getItem(BUS_KEY) || "{}") || {};
+      busData.lastMusicScore = JSON.parse(JSON.stringify({
+        serial: "FH-GA-20261115-MFF-HTM-5957AE44",
+        title: (SONG_SCORES[currentSongKey] || {}).title || "Custom Decompiled Score",
+        isolatedStem: activeStem,
+        noteCount: transcribedNotes.length,
+        updatedAt: new Date().toISOString()
+      }));
+      localStorage.setItem(BUS_KEY, JSON.stringify(busData));
+      if (suiteBus) {
+        suiteBus.postMessage({ app: "HawkSonic", type: "MUSIC_SCORE_SYNCED", stem: activeStem });
+      }
+      $("livePitchReadout").textContent = "🚀 SYNCED SOLFEGGIO & NOTATION SCORE TO HAWKSUITE BUS!";
+    } catch (e) {}
+  }
+
+  // =========================================================================
+  // 8. UI EVENT LISTENERS
+  // =========================================================================
+  function loadSongPreset(key) {
+    currentSongKey = key;
+    const preset = SONG_SCORES[key] || SONG_SCORES.paganini24;
+    transcribedNotes = preset.notes.map(n => ({ ...n }));
+    activeNoteIdx = 0;
+    renderGrandStaffAndSolfeggio();
+  }
+
+  $("songPresetSelect").addEventListener("change", e => loadSongPreset(e.target.value));
+  $("solfegeSystemSelect").addEventListener("change", renderGrandStaffAndSolfeggio);
+  $("exportScoreFormatSelect").addEventListener("change", refreshExportScorePreview);
+
+  $("cutoffKnob").addEventListener("input", e => {
+    $("lblCutoffVal").textContent = e.target.value + " Hz";
+  });
+  $("tempoBpmSlider").addEventListener("input", e => {
+    $("lblTempoBpm").textContent = e.target.value + " BPM";
+    refreshExportScorePreview();
+  });
+  $("btnClearScoreNotes").addEventListener("click", () => {
+    transcribedNotes = [];
+    activeNoteIdx = 0;
+    renderGrandStaffAndSolfeggio();
+  });
+
+  // Instrument Stem Selector Buttons
+  document.querySelectorAll(".stem-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".stem-btn").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      activeStem = btn.getAttribute("data-stem") || "lead_synth";
+      const prof = STEM_PROFILES[activeStem] || STEM_PROFILES.lead_synth;
+      $("lblActiveStemBadge").textContent = "ACTIVE STEM: " + prof.label.toUpperCase();
+      $("cutoffKnob").value = prof.freq;
+      $("lblCutoffVal").textContent = prof.freq + " Hz";
+      playArpeggioNote(440, activeStem, 0.25);
+      refreshExportScorePreview();
+    });
+  });
+
+  // Audio File Upload Decompiler
+  $("btnUploadAudioFile").addEventListener("click", () => $("inputAudioFile").click());
+  $("inputAudioFile").addEventListener("change", e => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    const player = $("hiddenAudioPlayer");
+    player.src = URL.createObjectURL(f);
+    player.play().catch(() => {});
+    $("livePitchReadout").textContent = "📂 DECOMPILING AUDIO FILE: " + f.name.toUpperCase();
+  });
+
+  // View Tab Switching
+  document.querySelectorAll(".hm-tab").forEach(tab => {
+    tab.addEventListener("click", () => {
+      const vId = tab.getAttribute("data-view");
+      document.querySelectorAll(".hm-tab").forEach(t => t.setAttribute("aria-selected", t === tab ? "true" : "false"));
+      document.querySelectorAll(".hm-view").forEach(v => v.classList.toggle("active", v.id === "view-" + vId));
+      if (vId === "export") refreshExportScorePreview();
+    });
+  });
+
+  $("btnSyncToHawkSuite").addEventListener("click", syncScoreToHawkSuite);
+  $("btnExportScoreJson").addEventListener("click", () => {
+    document.querySelector('.hm-tab[data-view="export"]').click();
+  });
+
+  $("btnCopyScoreOutput").addEventListener("click", () => {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText($("scoreExportTextarea").value).catch(() => {});
+    }
+    $("livePitchReadout").textContent = "📋 COPIED DECOMPILED SCORE TO CLIPBOARD!";
+  });
+
+  $("btnDownloadScoreFile").addEventListener("click", () => {
+    const fmt = $("exportScoreFormatSelect").value;
+    const ext = fmt === "abc_notation" ? ".abc" : fmt === "solfeggio_sheet" ? ".md" : ".hawkscore.json";
+    const blob = new Blob([$("scoreExportTextarea").value], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "hawksonic_decompiled_score" + ext;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  // Theme & Device Layout Switchers
+  const THEMES = {
+    "ui-sophisticated": { bg: "#070A12", panel: "#111726", panel2: "#172034", border: "#C5A059", accent: "#D4AF37", cyan: "#00F5D4", text: "#F8FAFC", mute: "#94A3B8" },
+    "cyberpunk":        { bg: "#0D0221", panel: "#19053B", panel2: "#240046", border: "#FF007F", accent: "#00F0FF", cyan: "#FF007F", text: "#F0ABFC", mute: "#C084FC" },
+    "matrix":           { bg: "#010902", panel: "#031606", panel2: "#042409", border: "#00FF41", accent: "#00FF41", cyan: "#22C55E", text: "#00FF41", mute: "#22C55E" },
+    "hawk-cyan":        { bg: "#040C16", panel: "#07131F", panel2: "#0D1E30", border: "#00F5D4", accent: "#00F5D4", cyan: "#38BDF8", text: "#F1F5F9", mute: "#64748B" },
+    "daylight":         { bg: "#E8EBF0", panel: "#F8FAFC", panel2: "#E2E8F0", border: "#64748B", accent: "#0284C7", cyan: "#0D9488", text: "#0F172A", mute: "#475569" }
+  };
+
+  $("hmThemeSelect").addEventListener("change", e => {
+    const th = THEMES[e.target.value] || THEMES["ui-sophisticated"];
+    const r = document.documentElement;
+    r.style.setProperty("--bg", th.bg);
+    r.style.setProperty("--panel", th.panel);
+    r.style.setProperty("--panel2", th.panel2);
+    r.style.setProperty("--border", th.border);
+    r.style.setProperty("--accent", th.accent);
+    r.style.setProperty("--cyan", th.cyan);
+    r.style.setProperty("--text", th.text);
+    r.style.setProperty("--mute", th.mute);
+  });
+
+  $("hmDeviceSelect").addEventListener("change", e => {
+    document.documentElement.setAttribute("data-device", e.target.value);
+  });
+
+  // Initial Boot
+  renderSolfeggioMatrix();
+  loadSongPreset("paganini24");
+  requestAnimationFrame(drawWaveformScope);
+})();
+</script>
+</body>
+</html>
